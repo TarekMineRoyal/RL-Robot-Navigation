@@ -1,11 +1,13 @@
 import numpy as np
 import tensorflow as tf
+
+from nav2d import config
 from nav2d.engine import NavigationEngine
 from nav2d.elements import VelRobot, Map
 from nav2d.utils import create_video
 
 
-def evaluate_agent(model_path, agent_type='dqn', num_episodes=3, video_name="eval_video.mp4"):
+def evaluate_agent(model_path: str, agent_type: str = 'dqn', num_episodes: int = 3, video_name: str = "eval_video.mp4"):
     print(f"Loading {agent_type.upper()} model from {model_path}...")
 
     # Load the trained keras model
@@ -18,7 +20,7 @@ def evaluate_agent(model_path, agent_type='dqn', num_episodes=3, video_name="eva
     # Initialize environment
     robot = VelRobot(0.5, 0.5)
     env_map = Map()
-    env = NavigationEngine(robot=robot, Map=env_map)
+    env = NavigationEngine(robot=robot, env_map=env_map)
 
     frames = []
 
@@ -30,7 +32,7 @@ def evaluate_agent(model_path, agent_type='dqn', num_episodes=3, video_name="eva
 
         print(f"Starting Episode {ep + 1}...")
 
-        while not done and steps < 300:  # 300 step timeout limit
+        while not done and steps < config.max_steps_per_episode:
             # Capture frame for video
             frames.append(env.render())
 
@@ -40,30 +42,33 @@ def evaluate_agent(model_path, agent_type='dqn', num_episodes=3, video_name="eva
             if agent_type == 'dqn':
                 # DQN: Get Q-values and pick the action with the highest Q-value (no epsilon exploration)
                 q_values = model(obs_reshaped).numpy()
-                action = np.argmax(q_values[0])
+                action = int(np.argmax(q_values[0]))
             elif agent_type == 'ppo':
                 # PPO Actor: Get action probabilities and pick the most likely action (deterministic)
                 probs = model(obs_reshaped).numpy()[0]
-                action = np.argmax(probs)
+                action = int(np.argmax(probs))
+            else:
+                raise ValueError("agent_type must be either 'dqn' or 'ppo'")
 
-            # Step the environment
-            obs, reward, done = env.step(action)
+            # Step the environment (Modernized Gym signature)
+            next_obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+
+            obs = next_obs
             total_reward += reward
             steps += 1
 
         print(f"Episode {ep + 1} Finished! Steps: {steps}, Total Reward: {total_reward:.2f}")
 
     print(f"Evaluation complete. Generating video: {video_name}")
-    # Utilize the existing create_video function from nav2d.utils
     create_video(frames, video_name)
-    print("Video saved successfully!")
 
 
 if __name__ == '__main__':
     # --- EVALUATE DQN ---
-    # Make sure 'carnav_model.keras' exists in your directory from the DQN training
-    evaluate_agent('carnav_model.keras', agent_type='dqn', video_name='dqn_navigation.mp4')
+    # Make sure 'carnav_model_final.keras' exists in your directory from the DQN training
+    evaluate_agent('carnav_model_final.keras', agent_type='dqn', video_name='dqn_navigation.mp4')
 
     # --- EVALUATE PPO ---
-    # Make sure 'ppo_actor_model.keras' exists from the PPO training
-    # evaluate_agent('ppo_actor_model.keras', agent_type='ppo', video_name='ppo_navigation.mp4')
+    # Make sure 'ppo_actor_model_final.keras' exists from the PPO training
+    evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', video_name='ppo_navigation.mp4')

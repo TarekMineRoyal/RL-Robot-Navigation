@@ -1,10 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-# Import the PPO components we just built
+from nav2d import config
 from nav2d.ppo_agent import PPOAgent, PPOBuffer
-
-# Import your Lab3 environment components
 from nav2d.engine import NavigationEngine
 from nav2d.elements import VelRobot, Map
 
@@ -13,24 +11,17 @@ def main():
     # 1. Initialize the Environment Components
     robot = VelRobot(0.5, 0.5)
     env_map = Map()
-
-    # We pass an empty obstacle list initially because our updated
-    # engine.reset() function dynamically spawns them anyway.
-    env = NavigationEngine(robot=robot, Map=env_map)
+    env = NavigationEngine(robot=robot, env_map=env_map)
 
     state_dim = env.observation_size
     action_dim = env.action_size
 
-    # 2. PPO Hyperparameters
-    steps_per_epoch = 4000  # Number of steps to collect before updating networks
-    epochs = 150  # Total number of training epochs
-    max_ep_len = 200  # Maximum steps per episode before timeout
-
-    # 3. Instantiate PPO Agent and Memory Buffer
+    # 2. Instantiate PPO Agent and Memory Buffer using Config
     agent = PPOAgent(state_dim=state_dim, action_dim=action_dim)
-    buffer = PPOBuffer(size=steps_per_epoch, state_dim=state_dim)
+    # We will assume you update ppo_agent.py later to pull its inner hyperparams from config too!
+    buffer = PPOBuffer(size=config.ppo_steps_per_epoch, state_dim=state_dim)
 
-    # 4. Main Training Loop
+    # 3. Main Training Loop
     obs = env.reset()
     ep_ret, ep_len = 0, 0
     episodes_completed = 0
@@ -38,15 +29,17 @@ def main():
 
     print("Starting PPO Training...")
 
-    for epoch in range(epochs):
+    for epoch in range(config.ppo_epochs):
         epoch_rewards = []
 
-        for t in range(steps_per_epoch):
+        for t in range(config.ppo_steps_per_epoch):
             # A. Get action, value, and log probability from the agent
             action, value, logp = agent.get_action(obs)
 
-            # B. Step the environment
-            next_obs, reward, done = env.step(action)
+            # B. Step the environment (Modernized Gym signature)
+            next_obs, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+
             ep_ret += reward
             ep_len += 1
 
@@ -57,14 +50,15 @@ def main():
             obs = next_obs
 
             # D. Check if episode is over or trajectory is cut off
-            timeout = (ep_len == max_ep_len)
+            timeout = (ep_len == config.max_steps_per_episode)
             terminal = done or timeout
-            epoch_ended = (t == steps_per_epoch - 1)
+            epoch_ended = (t == config.ppo_steps_per_epoch - 1)
 
             if terminal or epoch_ended:
                 # If trajectory didn't reach a terminal state, bootstrap value target
                 if epoch_ended and not terminal:
-                    print('Warning: trajectory cut off by epoch at %d steps.' % ep_len, flush=True)
+                    print(f'Warning: trajectory cut off by epoch at {ep_len} steps.', flush=True)
+
                 if timeout or epoch_ended:
                     _, value, _ = agent.get_action(obs)
                 else:
@@ -79,7 +73,7 @@ def main():
                 # Reset environment for the next episode
                 obs, ep_ret, ep_len = env.reset(), 0, 0
 
-        # 5. End of Epoch: Update Networks
+        # 4. End of Epoch: Update Networks
         # Retrieve the accumulated batch of trajectories
         obs_buf, act_buf, adv_buf, ret_buf, logp_buf = buffer.get()
 
@@ -98,8 +92,8 @@ def main():
         avg_reward = np.mean(epoch_rewards) if len(epoch_rewards) > 0 else 0
         total_epoch_rewards.append(avg_reward)
 
-        print(
-            f"Epoch {epoch + 1}/{epochs} | Episodes: {len(epoch_rewards)} | Avg Reward: {avg_reward:.2f} | Actor Loss: {loss_a.numpy():.4f} | Critic Loss: {loss_c.numpy():.4f}")
+        print(f"Epoch {epoch + 1}/{config.ppo_epochs} | Episodes: {len(epoch_rewards)} | "
+              f"Avg Reward: {avg_reward:.2f} | Actor Loss: {loss_a.numpy():.4f} | Critic Loss: {loss_c.numpy():.4f}")
 
         # Save model checkpoint periodically
         if (epoch + 1) % 10 == 0:
