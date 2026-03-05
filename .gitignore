@@ -1,0 +1,36 @@
+# =========================
+# Python & Environments
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+.env
+
+# =========================
+# IDEs & OS Files
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Project Specific Outputs
+# =========================
+# Ignore trained Keras model files (these get huge and change every run)
+*.keras
+*.h5
+
+# Ignore generated evaluation videos
+*.mp4
+*.avi
+
+# Ignore generated training plots (but DO NOT ignore the assets folder)
+reward_history.png
+*history.png
+
+# (Optional) Ignore the project instructions PDF
+mini-project.pdf

@@ -1,0 +1,7 @@
+pygame
+imageio[ffmpeg]
+matplotlib
+tensorflow
+pandas
+tqdm
+scipy
