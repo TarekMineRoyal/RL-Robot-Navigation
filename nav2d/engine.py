@@ -227,10 +227,16 @@ class NavigationEngine(gym.Env):
         alignment_bonus = np.cos(angle_diff) * 0.5
         reward += alignment_bonus
 
-        # Lidar Safety Penalty
+        # Lidar Safety Penalty (Proportional Repulsion Field)
         lidar_data = self.get_lidar_data()
-        if np.min(lidar_data) < config.lidar_penalty_threshold:
-            reward += config.lidar_penalty_value
+        min_lidar = np.min(lidar_data)
+
+        if min_lidar < config.lidar_penalty_threshold:
+            # Calculate how deep into the danger zone the robot is (0.0 to 1.0)
+            danger_ratio = 1.0 - (min_lidar / config.lidar_penalty_threshold)
+
+            # Scale the penalty: closer to wall = closer to full penalty
+            reward += config.lidar_penalty_value * danger_ratio
 
         return reward
 
