@@ -36,6 +36,9 @@ Two Deep RL algorithms were implemented from scratch using TensorFlow:
 
 ## 📂 Repository Structure
 ```text
+├── docs/
+│   ├── imgs/               # Learning curve plots
+│   └── videos/             # Agent evaluation GIFs
 ├── nav2d/
 │   ├── assets/             # Pygame sprites (robot, hazards, goal)
 │   ├── base_agent.py       # Abstract Base Class for RL agents
@@ -45,10 +48,13 @@ Two Deep RL algorithms were implemented from scratch using TensorFlow:
 │   ├── elements.py         # Physics and logic for objects/hazards
 │   ├── engine.py           # The core Gymnasium Environment
 │   └── utils.py            # Video generation, plotting, and math utilities
+├── .gitignore              # Ignored files and folders
 ├── evaluate.py             # Script to load agents and generate evaluation videos
+├── LICENSE                 # MIT License
+├── README.md               # Project documentation
+├── requirements.txt        # Project dependencies
 ├── train_dqn.py            # Training loop for DQN
-├── train_ppo.py            # Training loop for PPO
-└── requirements.txt        # Project dependencies
+└── train_ppo.py            # Training loop for PPO
 ```
 
 ## ⚙️ Installation
@@ -81,13 +87,13 @@ python train_dqn.py
 ```
 
 ### 📺 Evaluating and Generating Videos
-To evaluate a trained agent, you need the .keras model weights.
-(Note: Pre-trained weights are available in the GitHub Releases tab. Download them and place them in the root directory).
-Once the weights are in the root folder, run:
+To evaluate a trained agent, you need the `.keras` model weights. 
+*(Note: Pre-trained weights are available in the GitHub Releases tab. Download them and place them inside a folder named `models/` in the root directory).*
+Once the weights are in the `models/` folder, run:
 ```bash
 python evaluate.py
 ```
-This will run the agent through several episodes in the hardest difficulty setting and output an .mp4 video of the performance.
+This will run the agent through several episodes in the hardest difficulty setting and output a .gif video of the performance to the docs/videos/ folder.
 
 ## 🗺️ Environment Details
 * **Observation Space (Size: 203):**
