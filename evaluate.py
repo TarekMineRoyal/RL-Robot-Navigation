@@ -72,5 +72,5 @@ def evaluate_agent(model_path: str, agent_type: str = 'dqn', num_episodes: int =
 
 
 if __name__ == '__main__':
-    evaluate_agent('carnav_model_final.keras', agent_type='dqn', num_episodes=10, video_name='dqn_eval_video.mp4')
-    evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', num_episodes=10, video_name='ppo_eval_video.mp4')
+    evaluate_agent('models/carnav_model_final.keras', agent_type='dqn', num_episodes=10, video_name='docs/videos/dqn_eval_video.gif')
+    evaluate_agent('models/ppo_actor_model_final.keras', agent_type='ppo', num_episodes=10, video_name='docs/videos/ppo_eval_video.gif')

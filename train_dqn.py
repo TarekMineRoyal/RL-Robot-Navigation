@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 from nav2d import config
 from nav2d import utils
 from nav2d.engine import NavigationEngine
@@ -8,6 +8,9 @@ from nav2d.dqn_agent import DQNAgent
 
 
 def main():
+    os.makedirs('models', exist_ok=True)
+    os.makedirs('docs/imgs', exist_ok=True)
+
     # 1. Initialize the Environment Components
     robot = VelRobot(0.5, 0.5)
     env_map = Map()
@@ -83,14 +86,14 @@ def main():
         if (ep + 1) % config.dqn_num_p_av == 0:
             av_latest_points = np.mean(total_point_history[-config.dqn_num_p_av:])
             print(f"\rEpisode {ep + 1} | Total Average: {av_latest_points:.2f}")
-            agent.save('carnav_model.keras')
+            agent.save('models/carnav_model.keras')
 
 
     print("\nDQN Training Finished!")
-    agent.save('carnav_model_final.keras')
+    agent.save('models/carnav_model_final.keras')
 
     # Plot the results with the new variance-shaded function
-    utils.plot_history(total_point_history, filename='dqn_learning_curve.png')
+    utils.plot_history(total_point_history, filename='docs/imgs/dqn_learning_curve.png')
 
 
 if __name__ == '__main__':

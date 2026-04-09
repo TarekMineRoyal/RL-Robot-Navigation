@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-
+import os
 from nav2d import config
 from nav2d import utils
 from nav2d.ppo_agent import PPOAgent, PPOBuffer
@@ -9,6 +9,9 @@ from nav2d.elements import VelRobot, Map
 
 
 def main():
+    os.makedirs('models', exist_ok=True)
+    os.makedirs('docs/imgs', exist_ok=True)
+
     # 1. Initialize the Environment Components
     robot = VelRobot(0.5, 0.5)
     env_map = Map()
@@ -100,13 +103,13 @@ def main():
 
         # Save model checkpoint periodically
         if (epoch + 1) % 10 == 0:
-            agent.save('ppo_actor_model.keras')
+            agent.save('models/ppo_actor_model.keras')
 
     print("PPO Training Finished!")
-    agent.save('ppo_actor_model_final.keras')
+    agent.save('models/ppo_actor_model_final.keras')
 
     # Plot the results with the new variance-shaded function
-    utils.plot_history(total_epoch_rewards, filename='ppo_learning_curve.png')
+    utils.plot_history(total_epoch_rewards, filename='docs/imgs/ppo_learning_curve.png')
 
 
 if __name__ == '__main__':

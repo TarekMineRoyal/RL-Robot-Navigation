@@ -5,7 +5,7 @@ import matplotlib.ticker as mticker
 import imageio
 from tqdm import tqdm
 from typing import List, Deque, Any
-
+import os
 from nav2d import config
 
 
@@ -39,6 +39,8 @@ def check_update_conditions(t: int, num_steps_upd: int, memory_buffer: Deque[Any
 
 def plot_history(point_history: List[float], filename: str = 'reward_history.png', **kwargs):
     """Plots the reward history over episodes with moving average and variance shading."""
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
     lower_limit = kwargs.get("lower_limit", 0)
     upper_limit = kwargs.get("upper_limit", len(point_history))
 
@@ -92,8 +94,14 @@ def plot_history(point_history: List[float], filename: str = 'reward_history.png
 
 def create_video(frames: List[np.ndarray], filename: str, fps: int = 30):
     """Compiles a list of NumPy image arrays into an MP4 video."""
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
     print(f"Saving video to {filename}...")
-    with imageio.get_writer(filename, fps=fps) as video:
+    writer_kwargs = {'fps': fps}
+    if filename.endswith('.gif'):
+        writer_kwargs['loop'] = 0
+
+    with imageio.get_writer(filename, **writer_kwargs) as video:
         for frame in tqdm(frames, desc="Processing Frames"):
             video.append_data(frame)
     print(f"Video {filename} Created Successfully!")
