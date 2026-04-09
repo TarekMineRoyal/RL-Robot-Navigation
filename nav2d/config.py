@@ -28,8 +28,8 @@ orbiting_creature_count = 1
 # ==========================================
 lidar_num_rays = 200
 lidar_max_dist = 0.20  # 20% of the normalized map
-lidar_penalty_threshold = 0.05  # Within 5% of map size triggers warning
-lidar_penalty_value = -2.0
+lidar_penalty_threshold = 0.20  # Within 20% of map size triggers warning
+lidar_penalty_value = -1.0
 
 # ==========================================
 # Reward Shaping
@@ -65,7 +65,7 @@ ppo_steps_per_epoch = 4000
 ppo_epochs = 150
 ppo_clip_ratio = 0.2
 ppo_target_kl = 0.01
-ppo_train_iters = 80
+ppo_train_iters = 20
 ppo_gamma = 0.99
 ppo_lam = 0.95
 ppo_actor_lr = 3e-4
