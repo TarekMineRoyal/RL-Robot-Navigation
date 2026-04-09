@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 from nav2d import config
+from nav2d import utils
 from nav2d.ppo_agent import PPOAgent, PPOBuffer
 from nav2d.engine import NavigationEngine
 from nav2d.elements import VelRobot, Map
@@ -18,10 +19,10 @@ def main():
 
     # 2. Instantiate PPO Agent and Memory Buffer using Config
     agent = PPOAgent(state_dim=state_dim, action_dim=action_dim)
-    # We will assume you update ppo_agent.py later to pull its inner hyperparams from config too!
     buffer = PPOBuffer(size=config.ppo_steps_per_epoch, state_dim=state_dim)
 
     # 3. Main Training Loop
+    # Start at progress 0.0 (Kindergarten Phase)
     obs, info = env.reset(options={'progress': 0.0})
     ep_ret, ep_len = 0, 0
     episodes_completed = 0
@@ -36,7 +37,7 @@ def main():
             # A. Get action, value, and log probability from the agent
             action, value, logp = agent.get_action(obs)
 
-            # B. Step the environment (Modernized Gym signature)
+            # B. Step the environment
             next_obs, reward, terminated, truncated, info = env.step(action)
             done = terminated or truncated
 
@@ -70,10 +71,10 @@ def main():
                     epoch_rewards.append(ep_ret)
                     episodes_completed += 1
 
-                    # Reset environment for the next episode
-                    progress = epoch / config.ppo_epochs
-                    obs, info = env.reset(options={'progress': progress})
-                    ep_ret, ep_len = 0, 0
+                # Reset environment for the next episode, passing the curriculum progress
+                progress = epoch / config.ppo_epochs
+                obs, info = env.reset(options={'progress': progress})
+                ep_ret, ep_len = 0, 0
 
         # 4. End of Epoch: Update Networks
         # Retrieve the accumulated batch of trajectories
@@ -99,10 +100,13 @@ def main():
 
         # Save model checkpoint periodically
         if (epoch + 1) % 10 == 0:
-            agent.actor.save('ppo_actor_model.keras')
+            agent.save('ppo_actor_model.keras')
 
     print("PPO Training Finished!")
-    agent.actor.save('ppo_actor_model_final.keras')
+    agent.save('ppo_actor_model_final.keras')
+
+    # Plot the results with the new variance-shaded function
+    utils.plot_history(total_epoch_rewards, filename='ppo_learning_curve.png')
 
 
 if __name__ == '__main__':

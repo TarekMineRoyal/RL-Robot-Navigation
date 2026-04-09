@@ -37,48 +37,58 @@ def check_update_conditions(t: int, num_steps_upd: int, memory_buffer: Deque[Any
     return False
 
 
-def plot_history(point_history: List[float], **kwargs):
-    """Plots the reward history over episodes and saves it as a PNG."""
+def plot_history(point_history: List[float], filename: str = 'reward_history.png', **kwargs):
+    """Plots the reward history over episodes with moving average and variance shading."""
     lower_limit = kwargs.get("lower_limit", 0)
     upper_limit = kwargs.get("upper_limit", len(point_history))
 
     # Default window size is 10% of the data
     window_size = kwargs.get("window_size", max(1, (upper_limit * 10) // 100))
 
-    plot_rolling_mean_only = kwargs.get("plot_rolling_mean_only", False)
-    plot_data_only = kwargs.get("plot_data_only", False)
-
     points = point_history[lower_limit:upper_limit]
     episode_num = list(range(lower_limit, upper_limit))
 
-    # Use Pandas to calculate the rolling mean (moving average).
-    rolling_mean = pd.DataFrame(points).rolling(window_size).mean()
+    # Use Pandas to calculate the rolling mean and standard deviation (variance)
+    series = pd.Series(points)
+    rolling_mean = series.rolling(window=window_size, min_periods=1).mean()
+    rolling_std = series.rolling(window=window_size, min_periods=1).std()
 
-    plt.figure(figsize=(10, 7), facecolor="white")
-
-    if plot_data_only:
-        plt.plot(episode_num, points, linewidth=1, color="cyan")
-    elif plot_rolling_mean_only:
-        plt.plot(episode_num, rolling_mean, linewidth=2, color="magenta")
-    else:
-        plt.plot(episode_num, points, linewidth=1, color="cyan")
-        plt.plot(episode_num, rolling_mean, linewidth=2, color="magenta")
-
-    text_color = "black"
+    plt.figure(figsize=(12, 8), facecolor="white")
     ax = plt.gca()
-    ax.set_facecolor("black")
-    plt.grid()
-    plt.xlabel("Episode", color=text_color, fontsize=30)
-    plt.ylabel("Total Points", color=text_color, fontsize=30)
+    ax.set_facecolor("#f4f4f4")
+    plt.grid(color='white', linestyle='-', linewidth=2)
 
-    yNumFmt = mticker.StrMethodFormatter("{x:,}")
+    # Plot raw data lightly in the background
+    plt.plot(episode_num, points, alpha=0.3, color="cyan", label="Raw Episode Reward")
+
+    # Plot the moving average prominently
+    plt.plot(episode_num, rolling_mean, linewidth=2, color="blue", label=f"Moving Average ({window_size} ep)")
+
+    # Fill the variance (Standard Deviation)
+    plt.fill_between(
+        episode_num,
+        rolling_mean - rolling_std,
+        rolling_mean + rolling_std,
+        color="blue",
+        alpha=0.2,
+        label="Variance (±1 Std Dev)"
+    )
+
+    text_color = "#333333"
+    plt.xlabel("Episode", color=text_color, fontsize=16, fontweight='bold')
+    plt.ylabel("Total Reward", color=text_color, fontsize=16, fontweight='bold')
+    plt.title("Agent Training Performance", color=text_color, fontsize=20, fontweight='bold')
+
+    yNumFmt = mticker.StrMethodFormatter("{x:,.0f}")
     ax.yaxis.set_major_formatter(yNumFmt)
-    ax.tick_params(axis="x", colors=text_color)
-    ax.tick_params(axis="y", colors=text_color)
+    ax.tick_params(axis="both", colors=text_color, labelsize=12)
 
-    plt.savefig('reward_history.png')
-    plt.close()  # Free up memory
+    plt.legend(loc="lower right", fontsize=14)
+    plt.tight_layout()
 
+    print(f"Saving learning curve plot to {filename}...")
+    plt.savefig(filename, dpi=300)
+    plt.close()
 
 def create_video(frames: List[np.ndarray], filename: str, fps: int = 30):
     """Compiles a list of NumPy image arrays into an MP4 video."""

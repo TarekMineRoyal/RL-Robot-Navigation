@@ -13,7 +13,7 @@ def main():
     env_map = Map()
     env = NavigationEngine(robot=robot, env_map=env_map)
 
-    # 2. Initialize the DQN Agent
+    # 2. Initialize the DQN Agent (Now inherits from BaseAgent)
     agent = DQNAgent(state_dim=env.observation_size, action_dim=env.action_size)
 
     # 3. Training Tracking Variables
@@ -24,11 +24,10 @@ def main():
     print("Starting DQN Training...")
 
     # 4. Main Training Loop
-    # 4. Main Training Loop
     for ep in range(config.dqn_num_episodes):
-        # Calculate curriculum progress
+        # Calculate curriculum progress and pass to environment
         progress = ep / config.dqn_num_episodes
-        state, info = env.reset(options={'progress': progress})  # Gym wrapper returns tuple
+        state, info = env.reset(options={'progress': progress})
         total_points = 0
 
         for t in range(config.max_steps_per_episode):
@@ -69,7 +68,7 @@ def main():
         if (ep + 1) % config.dqn_num_p_av == 0:
             av_latest_points = np.mean(total_point_history[-config.dqn_num_p_av:])
             print(f"\rEpisode {ep + 1} | Total Average: {av_latest_points:.2f}")
-            agent.q_network.save('carnav_model.keras')
+            agent.save('carnav_model.keras')
 
             # Early stopping if the environment is considered solved
             if av_latest_points > 800.0 and ep > config.dqn_num_episodes / 2:
@@ -77,10 +76,10 @@ def main():
                 break
 
     print("\nDQN Training Finished!")
-    agent.q_network.save('carnav_model_final.keras')
+    agent.save('carnav_model_final.keras')
 
-    # Plot the results
-    utils.plot_history(total_point_history, plot_data_only=True)
+    # Plot the results with the new variance-shaded function
+    utils.plot_history(total_point_history, filename='dqn_learning_curve.png')
 
 
 if __name__ == '__main__':
