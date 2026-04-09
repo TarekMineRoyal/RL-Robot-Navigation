@@ -85,10 +85,6 @@ def main():
             print(f"\rEpisode {ep + 1} | Total Average: {av_latest_points:.2f}")
             agent.save('carnav_model.keras')
 
-            # Early stopping if the environment is considered solved
-            if av_latest_points > 800.0 and ep > config.dqn_num_episodes / 2:
-                print(f"\n\nEnvironment solved in {ep + 1} episodes!")
-                break
 
     print("\nDQN Training Finished!")
     agent.save('carnav_model_final.keras')
