@@ -73,6 +73,8 @@ class PPOAgent(BaseAgent):
         hidden_init = tf.keras.initializers.Orthogonal(gain=np.sqrt(2))
         # Small gain for policy output ensures initial probabilities are uniform
         action_init = tf.keras.initializers.Orthogonal(gain=0.01)
+        # Unscaled gain for the critic's state-value estimation
+        value_init = tf.keras.initializers.Orthogonal(gain=1.0)
 
         # Build Actor (Policy) Network
         obs_input = Input(shape=(self.state_dim,))
@@ -88,7 +90,7 @@ class PPOAgent(BaseAgent):
         v = Dense(256, activation='tanh', kernel_initializer=hidden_init)(v_input)
         v = Dense(256, activation='tanh', kernel_initializer=hidden_init)(v)
         v = Dense(128, activation='tanh', kernel_initializer=hidden_init)(v)
-        state_value = Dense(1, activation='linear', kernel_initializer=hidden_init)(v)
+        state_value = Dense(1, activation='linear', kernel_initializer=value_init)(v)
         self.critic = Model(inputs=v_input, outputs=state_value)
         self.critic_optimizer = Adam(learning_rate=config.ppo_critic_lr)
 
