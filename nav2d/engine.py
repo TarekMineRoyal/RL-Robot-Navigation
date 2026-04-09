@@ -1,6 +1,8 @@
 import numpy as np
 import pygame
-from typing import Tuple, Dict, Any
+import gymnasium as gym
+from gymnasium import spaces
+from typing import Tuple, Dict, Any, Optional
 
 from nav2d import config
 from nav2d.elements import (
@@ -8,8 +10,13 @@ from nav2d.elements import (
 )
 
 
-class NavigationEngine:
+class NavigationEngine(gym.Env):
+    # Standard Gym metadata for rendering
+    metadata = {"render_modes": ["rgb_array"], "render_fps": 30}
+
     def __init__(self, robot: VelRobot, env_map: Map):
+        super().__init__()
+
         self.screen = None
 
         # Initialize display if not headless
@@ -27,6 +34,15 @@ class NavigationEngine:
         self.observation_size = config.observation_size
         self.action_size = config.action_size
 
+        # Define Action and Observation Spaces for Gymnasium
+        self.action_space = spaces.Discrete(self.action_size)
+        self.observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(self.observation_size,),
+            dtype=np.float32
+        )
+
         # Internal state
         self.previous_distance = 0.0
         self.obstacle_list = []
@@ -34,36 +50,49 @@ class NavigationEngine:
         self.moving_creature = None
         self.orbiting_creature = None
 
-    def reset(self, pos: Tuple[float, float] = None) -> np.ndarray:
+    def reset(self, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[
+        np.ndarray, Dict[str, Any]]:
         """Resets the environment and returns the initial observation."""
-        # 1. Spawn Robot and Goal
-        if not pos:
-            self.robot.reset()
-        else:
-            self.robot.reset(pos[0], pos[1])
+        # Seed the environment for reproducibility
+        super().reset(seed=seed)
+        if seed is not None:
+            np.random.seed(seed)
 
         self.env_map.goal.reset()
 
-        # Ensure robot doesn't spawn on top of the goal
-        while np.hypot(self.robot.x - self.env_map.goal.x, self.robot.y - self.env_map.goal.y) < 0.3:
-            self.env_map.goal.reset()
-
-        # 2. Spawn Static Obstacles
+        # 1. Spawn Static Obstacles at FIXED positions
+        fixed_positions = [(0.3, 0.3), (0.7, 0.7), (0.3, 0.7)]
         self.static_obstacles = [
-            StaticObstacle(np.random.uniform(0.1, 0.9), np.random.uniform(0.1, 0.9))
-            for _ in range(config.static_obstacle_count)
+            StaticObstacle(x, y) for (x, y) in fixed_positions[:config.static_obstacle_count]
         ]
 
-        # 3. Spawn Moving Creatures
+        # 2. Spawn Moving Creatures
         cx, cy = np.random.uniform(0.1, 0.9), np.random.uniform(0.1, 0.9)
         self.moving_creature = MovingCreature(cx, cy)
-
         self.orbiting_creature = GoalOrbitingCreature(
             self.env_map.goal.x, self.env_map.goal.y
         )
 
-        # 4. Consolidate hazards
+        # 3. Consolidate hazards
         self.obstacle_list = self.static_obstacles + [self.moving_creature, self.orbiting_creature]
+
+        # 4. Safe Robot Spawning Loop
+        # Ensure robot doesn't spawn on top of the goal OR any obstacles
+        valid_spawn = False
+        while not valid_spawn:
+            self.robot.reset()
+            valid_spawn = True
+
+            # Check distance to goal
+            if np.hypot(self.robot.x - self.env_map.goal.x, self.robot.y - self.env_map.goal.y) < 0.3:
+                valid_spawn = False
+                continue
+
+            # Check collision with hazards
+            for obs in self.obstacle_list:
+                if self._check_collision(obs):
+                    valid_spawn = False
+                    break
 
         # 5. Initialize reward shaping metrics
         self.previous_distance = np.hypot(
@@ -71,7 +100,11 @@ class NavigationEngine:
             self.robot.y - self.env_map.goal.y
         )
 
-        return self.get_state()
+        # Gym environments must return (observation, info) on reset
+        observation = self.get_state()
+        info = {}
+
+        return observation, info
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """
@@ -149,6 +182,19 @@ class NavigationEngine:
         reward += (distance_delta * config.dense_reward_scale)
         self.previous_distance = current_distance
 
+        # NEW: Dense Alignment Reward (Reward the agent for facing the goal)
+        dx = self.env_map.goal.x - self.robot.x
+        dy = self.env_map.goal.y - self.robot.y
+        angle_to_goal = np.arctan2(dy, dx)
+
+        # Calculate angle difference strictly wrapped between [-pi, pi]
+        angle_diff = (angle_to_goal - self.robot.orient + np.pi) % (2 * np.pi) - np.pi
+
+        # cos(angle_diff) is 1.0 when perfectly facing the goal, and -1.0 when facing away.
+        # We scale it slightly so it guides behavior without overpowering the main distance/goal rewards.
+        alignment_bonus = np.cos(angle_diff) * 0.5
+        reward += alignment_bonus
+
         # Lidar Safety Penalty
         lidar_data = self.get_lidar_data()
         if np.min(lidar_data) < config.lidar_penalty_threshold:
@@ -157,10 +203,28 @@ class NavigationEngine:
         return reward
 
     def get_state(self) -> np.ndarray:
-        lidar_dists = self.get_lidar_data()
-        robot_pos = np.array([self.robot.x, self.robot.y])
-        goal_pos = np.array([self.env_map.goal.x, self.env_map.goal.y])
-        return np.concatenate((robot_pos, goal_pos, lidar_dists))
+        # 1. Normalize Lidar to range [0.0, 1.0]
+        lidar_dists = self.get_lidar_data() / config.lidar_max_dist
+
+        # 2. Calculate Relative Distance (Normalized to max possible map diagonal)
+        dx = self.env_map.goal.x - self.robot.x
+        dy = self.env_map.goal.y - self.robot.y
+        dist = np.hypot(dx, dy)
+        norm_dist = dist / np.sqrt(2.0)  # Max diagonal of a 1x1 map is ~1.414
+
+        # 3. Calculate Relative Angle (Encoded as Sine and Cosine)
+        angle_to_goal = np.arctan2(dy, dx)
+        angle_diff = angle_to_goal - self.robot.orient
+
+        # Wrap angle strictly between [-pi, pi]
+        angle_diff = (angle_diff + np.pi) % (2 * np.pi) - np.pi
+
+        sin_a = np.sin(angle_diff)
+        cos_a = np.cos(angle_diff)
+
+        # Final State Vector: [distance, sin, cos, ...lidar]
+        state = np.concatenate(([norm_dist, sin_a, cos_a], lidar_dists))
+        return state.astype(np.float32)
 
     def get_lidar_data(self) -> np.ndarray:
         """Casts rays to detect walls and obstacles, returning distance array."""
@@ -170,7 +234,7 @@ class NavigationEngine:
 
         rx, ry = self.robot.x, self.robot.y
 
-        # 1. Wall Intersections
+        # 1. Vectorized Wall Intersections
         ray_dx_safe = np.where(ray_dx == 0, 1e-6, ray_dx)
         ray_dy_safe = np.where(ray_dy == 0, 1e-6, ray_dy)
 
@@ -182,20 +246,35 @@ class NavigationEngine:
         wall_dists = np.minimum.reduce([dist_x1, dist_x0, dist_y1, dist_y0])
         distances = np.minimum(distances, wall_dists)
 
-        # 2. Obstacle Intersections
-        radius = config.obj_collision_threshold
+        # 2. Fully Vectorized Obstacle Intersections (No more Python loops!)
+        if self.obstacle_list:
+            # Create (N, 2) array of obstacle positions
+            obs_positions = np.array([[obs.x, obs.y] for obs in self.obstacle_list])
 
-        for obs in self.obstacle_list:
-            vx, vy = obs.x - rx, obs.y - ry
-            d = vx * ray_dx + vy * ray_dy  # Projection
+            # Vectors from robot to obstacles -> Shape: (N, 2)
+            vx = obs_positions[:, 0] - rx
+            vy = obs_positions[:, 1] - ry
 
-            h_sq = (vx ** 2 + vy ** 2) - d ** 2  # Distance squared to ray line
-            hit_mask = (d > 0) & (h_sq < radius ** 2)
+            # Project obstacle vectors onto all 200 rays -> Shape: (N, 200)
+            d = np.outer(vx, ray_dx) + np.outer(vy, ray_dy)
 
-            hit_dists = np.full(config.lidar_num_rays, np.inf)
-            hit_dists[hit_mask] = d[hit_mask] - np.sqrt(radius ** 2 - h_sq[hit_mask])
+            # Calculate orthogonal squared distance to the ray line -> Shape: (N, 200)
+            v_sq = (vx ** 2 + vy ** 2).reshape(-1, 1)
+            h_sq = v_sq - d ** 2
 
-            distances = np.minimum(distances, hit_dists)
+            radius = config.obj_collision_threshold
+            r_sq = radius ** 2
+
+            # Identify which rays hit which obstacles
+            hit_mask = (d > 0) & (h_sq < r_sq)
+
+            # Calculate exact distance to the hit surface
+            hit_dists = np.full(d.shape, np.inf)
+            hit_dists[hit_mask] = d[hit_mask] - np.sqrt(r_sq - h_sq[hit_mask])
+
+            # Collapse the matrix to find the closest obstacle for each ray
+            min_obs_dists = np.min(hit_dists, axis=0)
+            distances = np.minimum(distances, min_obs_dists)
 
         return distances
 

@@ -17,8 +17,8 @@ max_steps_per_episode = 200
 # ==========================================
 wall_collision_threshold = 0.04
 obj_collision_threshold = 0.04
-robot_vel_scale = 0.02
-creature_velocity = 0.02
+robot_vel_scale = 0.03
+creature_velocity = 0.01
 static_obstacle_count = 3
 moving_creature_count = 1
 orbiting_creature_count = 1
@@ -45,7 +45,7 @@ reward_sensitive = 1.0
 # RL Common Architecture
 # ==========================================
 # Observation: [robot_x, robot_y, goal_x, goal_y, lidar_ray_1 ... lidar_ray_N]
-observation_size = 4 + lidar_num_rays
+observation_size = 3 + lidar_num_rays
 action_size = 4  # 0: RIGHT, 1: LEFT, 2: FORWARD, 3: SPRINT
 
 # ==========================================
