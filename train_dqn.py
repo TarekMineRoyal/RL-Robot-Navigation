@@ -20,13 +20,29 @@ def main():
     total_point_history = []
     total_rewards = 0
     epsilon = 1.0
+    previous_phase = 0
 
     print("Starting DQN Training...")
 
     # 4. Main Training Loop
+    # 4. Main Training Loop
     for ep in range(config.dqn_num_episodes):
         # Calculate curriculum progress and pass to environment
         progress = ep / config.dqn_num_episodes
+
+        # --- Exploration Injection Logic ---
+        if progress < 0.2:
+            current_phase = 0
+        elif progress < 0.5:
+            current_phase = 1
+        else:
+            current_phase = 2
+
+        if current_phase > previous_phase:
+            print(f"\n--- Curriculum Phase Upgraded to Phase {current_phase}! Boosting Exploration ---")
+            epsilon = max(epsilon, 0.5)  # Boost epsilon to prevent getting stuck in local optima
+            previous_phase = current_phase
+
         state, info = env.reset(options={'progress': progress})
         total_points = 0
 
