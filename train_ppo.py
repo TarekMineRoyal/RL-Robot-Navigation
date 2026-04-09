@@ -22,7 +22,7 @@ def main():
     buffer = PPOBuffer(size=config.ppo_steps_per_epoch, state_dim=state_dim)
 
     # 3. Main Training Loop
-    obs = env.reset()
+    obs, info = env.reset(options={'progress': 0.0})
     ep_ret, ep_len = 0, 0
     episodes_completed = 0
     total_epoch_rewards = []
@@ -70,8 +70,10 @@ def main():
                     epoch_rewards.append(ep_ret)
                     episodes_completed += 1
 
-                # Reset environment for the next episode
-                obs, ep_ret, ep_len = env.reset(), 0, 0
+                    # Reset environment for the next episode
+                    progress = epoch / config.ppo_epochs
+                    obs, info = env.reset(options={'progress': progress})
+                    ep_ret, ep_len = 0, 0
 
         # 4. End of Epoch: Update Networks
         # Retrieve the accumulated batch of trajectories

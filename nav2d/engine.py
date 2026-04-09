@@ -53,12 +53,12 @@ class NavigationEngine(gym.Env):
     def reset(self, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[
         np.ndarray, Dict[str, Any]]:
         """Resets the environment and returns the initial observation."""
-        # Seed the environment for reproducibility
         super().reset(seed=seed)
         if seed is not None:
             np.random.seed(seed)
 
-        self.env_map.goal.reset()
+        # Extract training progress (0.0 to 1.0) from options, default to 1.0 (hardest)
+        progress = options.get('progress', 1.0) if options else 1.0
 
         # 1. Spawn Static Obstacles at FIXED positions
         fixed_positions = [(0.3, 0.3), (0.7, 0.7), (0.3, 0.7)]
@@ -69,30 +69,63 @@ class NavigationEngine(gym.Env):
         # 2. Spawn Moving Creatures
         cx, cy = np.random.uniform(0.1, 0.9), np.random.uniform(0.1, 0.9)
         self.moving_creature = MovingCreature(cx, cy)
-        self.orbiting_creature = GoalOrbitingCreature(
-            self.env_map.goal.x, self.env_map.goal.y
-        )
 
-        # 3. Consolidate hazards
-        self.obstacle_list = self.static_obstacles + [self.moving_creature, self.orbiting_creature]
+        # We will initialize the orbiting creature after the goal is set
+        self.obstacle_list = self.static_obstacles + [self.moving_creature]
 
-        # 4. Safe Robot Spawning Loop
-        # Ensure robot doesn't spawn on top of the goal OR any obstacles
+        # 3. Curriculum Learning: Safe Robot & Goal Spawning
         valid_spawn = False
         while not valid_spawn:
-            self.robot.reset()
             valid_spawn = True
 
-            # Check distance to goal
-            if np.hypot(self.robot.x - self.env_map.goal.x, self.robot.y - self.env_map.goal.y) < 0.3:
+            # Re-roll the moving creature so it doesn't trap the fixed robot in an infinite loop
+            self.moving_creature.reset()
+
+            # --- Phase A: Kindergarten (Progress < 20%) ---
+            if progress < 0.2:
+                # Robot in center, Goal very close
+                self.robot.reset(x=0.5, y=0.5)
+                angle = np.random.uniform(-np.pi, np.pi)
+                dist = np.random.uniform(0.1, 0.2)
+                gx = np.clip(0.5 + dist * np.cos(angle), 0.1, 0.9)
+                gy = np.clip(0.5 + dist * np.sin(angle), 0.1, 0.9)
+                self.env_map.goal.reset(x=gx, y=gy)
+
+            # --- Phase B: Middle School (Progress < 50%) ---
+            elif progress < 0.5:
+                # Robot in safe corner, Goal anywhere valid
+                self.robot.reset(x=0.1, y=0.1)
+                self.env_map.goal.reset()
+
+            # --- Phase C: High School (Progress >= 50%) ---
+            else:
+                # Full randomization
+                self.robot.reset()
+                self.env_map.goal.reset()
+
+            # Check minimum distance to goal (Skip this check for Phase A, which is deliberately close)
+            if progress >= 0.2 and np.hypot(self.robot.x - self.env_map.goal.x, self.robot.y - self.env_map.goal.y) < 0.2:
                 valid_spawn = False
                 continue
 
-            # Check collision with hazards
+            # Check collision with hazards (static + moving)
             for obs in self.obstacle_list:
                 if self._check_collision(obs):
                     valid_spawn = False
                     break
+
+            # Also ensure goal doesn't spawn inside an obstacle
+            for obs in self.obstacle_list:
+                if np.hypot(self.env_map.goal.x - obs.x,
+                            self.env_map.goal.y - obs.y) < config.obj_collision_threshold * 2:
+                    valid_spawn = False
+                    break
+
+        # 4. Finalize Orbiting Creature now that Goal is locked
+        self.orbiting_creature = GoalOrbitingCreature(
+            self.env_map.goal.x, self.env_map.goal.y
+        )
+        self.obstacle_list.append(self.orbiting_creature)
 
         # 5. Initialize reward shaping metrics
         self.previous_distance = np.hypot(
@@ -100,7 +133,6 @@ class NavigationEngine(gym.Env):
             self.robot.y - self.env_map.goal.y
         )
 
-        # Gym environments must return (observation, info) on reset
         observation = self.get_state()
         info = {}
 

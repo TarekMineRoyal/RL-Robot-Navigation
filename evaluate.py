@@ -71,4 +71,4 @@ if __name__ == '__main__':
 
     # --- EVALUATE PPO ---
     # Make sure 'ppo_actor_model_final.keras' exists from the PPO training
-    evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', video_name='ppo_navigation.mp4')
+    #evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', video_name='ppo_navigation.mp4')

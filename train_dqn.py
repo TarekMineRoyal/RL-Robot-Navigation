@@ -24,8 +24,11 @@ def main():
     print("Starting DQN Training...")
 
     # 4. Main Training Loop
+    # 4. Main Training Loop
     for ep in range(config.dqn_num_episodes):
-        state = env.reset()
+        # Calculate curriculum progress
+        progress = ep / config.dqn_num_episodes
+        state, info = env.reset(options={'progress': progress})  # Gym wrapper returns tuple
         total_points = 0
 
         for t in range(config.max_steps_per_episode):
