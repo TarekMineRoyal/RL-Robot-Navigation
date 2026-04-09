@@ -36,6 +36,9 @@ Two Deep RL algorithms were implemented from scratch using TensorFlow:
 
 ## 📂 Repository Structure
 ```text
+├── docs/
+│   ├── imgs/               # Learning curve plots
+│   └── videos/             # Agent evaluation GIFs
 ├── nav2d/
 │   ├── assets/             # Pygame sprites (robot, hazards, goal)
 │   ├── base_agent.py       # Abstract Base Class for RL agents
@@ -45,10 +48,13 @@ Two Deep RL algorithms were implemented from scratch using TensorFlow:
 │   ├── elements.py         # Physics and logic for objects/hazards
 │   ├── engine.py           # The core Gymnasium Environment
 │   └── utils.py            # Video generation, plotting, and math utilities
+├── .gitignore              # Ignored files and folders
 ├── evaluate.py             # Script to load agents and generate evaluation videos
+├── LICENSE                 # MIT License
+├── README.md               # Project documentation
+├── requirements.txt        # Project dependencies
 ├── train_dqn.py            # Training loop for DQN
-├── train_ppo.py            # Training loop for PPO
-└── requirements.txt        # Project dependencies
+└── train_ppo.py            # Training loop for PPO
 ```
 
 ## ⚙️ Installation
