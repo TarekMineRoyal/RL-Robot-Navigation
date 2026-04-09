@@ -76,18 +76,18 @@ class PPOAgent(BaseAgent):
 
         # Build Actor (Policy) Network
         obs_input = Input(shape=(self.state_dim,))
-        x = Dense(256, activation='relu', kernel_initializer=hidden_init)(obs_input)
-        x = Dense(256, activation='relu', kernel_initializer=hidden_init)(x)
-        x = Dense(128, activation='relu', kernel_initializer=hidden_init)(x)
+        x = Dense(256, activation='tanh', kernel_initializer=hidden_init)(obs_input)
+        x = Dense(256, activation='tanh', kernel_initializer=hidden_init)(x)
+        x = Dense(128, activation='tanh', kernel_initializer=hidden_init)(x)
         action_probs = Dense(self.action_dim, activation='softmax', kernel_initializer=action_init)(x)
         self.actor = Model(inputs=obs_input, outputs=action_probs)
         self.actor_optimizer = Adam(learning_rate=config.ppo_actor_lr)
 
         # Build Critic (Value) Network
         v_input = Input(shape=(self.state_dim,))
-        v = Dense(256, activation='relu', kernel_initializer=hidden_init)(v_input)
-        v = Dense(256, activation='relu', kernel_initializer=hidden_init)(v)
-        v = Dense(128, activation='relu', kernel_initializer=hidden_init)(v)
+        v = Dense(256, activation='tanh', kernel_initializer=hidden_init)(v_input)
+        v = Dense(256, activation='tanh', kernel_initializer=hidden_init)(v)
+        v = Dense(128, activation='tanh', kernel_initializer=hidden_init)(v)
         state_value = Dense(1, activation='linear', kernel_initializer=hidden_init)(v)
         self.critic = Model(inputs=v_input, outputs=state_value)
         self.critic_optimizer = Adam(learning_rate=config.ppo_critic_lr)

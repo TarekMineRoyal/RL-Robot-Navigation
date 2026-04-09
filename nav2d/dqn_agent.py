@@ -36,9 +36,9 @@ class DQNAgent(BaseAgent):
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=(self.state_dim,)),
-            tf.keras.layers.Dense(256, activation='relu', kernel_initializer=initializer),
-            tf.keras.layers.Dense(256, activation='relu', kernel_initializer=initializer),
-            tf.keras.layers.Dense(128, activation='relu', kernel_initializer=initializer),
+            tf.keras.layers.Dense(256, activation='tanh', kernel_initializer=initializer),
+            tf.keras.layers.Dense(256, activation='tanh', kernel_initializer=initializer),
+            tf.keras.layers.Dense(128, activation='tanh', kernel_initializer=initializer),
             tf.keras.layers.Dense(self.action_dim, activation='linear', kernel_initializer=initializer)
         ])
         return model
