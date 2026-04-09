@@ -66,12 +66,11 @@ def evaluate_agent(model_path: str, agent_type: str = 'dqn', num_episodes: int =
 
         print(f"Episode {ep + 1} Finished! Steps: {steps}, Total Reward: {total_reward:.2f}")
 
-    # 4. Save the Video (Use fps=30 for smooth playback)
-    create_video(frames, video_name, fps=30)
+    # 4. Save the Video
+    create_video(frames, video_name, fps=15)
     print("\n")
 
 
 if __name__ == '__main__':
-    # Make sure you have trained your agents and these files exist!
-    evaluate_agent('carnav_model_final.keras', agent_type='dqn', video_name='dqn_eval_video.mp4')
-    evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', video_name='ppo_eval_video.mp4')
+    evaluate_agent('carnav_model_final.keras', agent_type='dqn', num_episodes=10, video_name='dqn_eval_video.mp4')
+    evaluate_agent('ppo_actor_model_final.keras', agent_type='ppo', num_episodes=10, video_name='ppo_eval_video.mp4')

@@ -72,7 +72,7 @@ class ObjectBase:
 # ==========================================
 
 class StaticObstacle(ObjectBase):
-    def __init__(self, x: float, y: float, radius: float = 0.05):
+    def __init__(self, x: float, y: float, radius: float = 0.035):
         self.radius = radius
         size = int(self.radius * 2 * config.scale)
         super().__init__(f"{config.root}/assets/cat.png", np.array((size, size)), x, y)
@@ -83,7 +83,7 @@ class StaticObstacle(ObjectBase):
 
 
 class MovingCreature(ObjectBase):
-    def __init__(self, x: float, y: float, radius: float = 0.05, velocity: float = config.creature_velocity):
+    def __init__(self, x: float, y: float, radius: float = 0.035, velocity: float = config.creature_velocity):
         self.radius = radius
         self.velocity = velocity
         self.angle = np.random.uniform(-np.pi, np.pi)
@@ -109,7 +109,7 @@ class MovingCreature(ObjectBase):
 
 
 class GoalOrbitingCreature(ObjectBase):
-    def __init__(self, goal_x: float, goal_y: float, radius: float = 0.05, orbit_radius: float = 0.15,
+    def __init__(self, goal_x: float, goal_y: float, radius: float = 0.035, orbit_radius: float = 0.15,
                  velocity: float = config.creature_velocity):
         self.radius = radius
         self.orbit_radius = orbit_radius

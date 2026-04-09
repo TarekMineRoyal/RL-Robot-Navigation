@@ -17,7 +17,7 @@ max_steps_per_episode = 200
 # ==========================================
 wall_collision_threshold = 0.04
 obj_collision_threshold = 0.04
-robot_vel_scale = 0.03
+robot_vel_scale = 0.02
 creature_velocity = 0.01
 static_obstacle_count = 3
 moving_creature_count = 1
@@ -61,7 +61,7 @@ dqn_soft_upd = 0.01
 # ==========================================
 # PPO Hyperparameters
 # ==========================================
-ppo_steps_per_epoch = 4000
+ppo_steps_per_epoch = 1024
 ppo_epochs = 150
 ppo_clip_ratio = 0.2
 ppo_target_kl = 0.01
