@@ -25,7 +25,6 @@ def main():
     print("Starting DQN Training...")
 
     # 4. Main Training Loop
-    # 4. Main Training Loop
     for ep in range(config.dqn_num_episodes):
         # Calculate curriculum progress and pass to environment
         progress = ep / config.dqn_num_episodes

@@ -214,7 +214,7 @@ class NavigationEngine(gym.Env):
         reward += (distance_delta * config.dense_reward_scale)
         self.previous_distance = current_distance
 
-        # NEW: Dense Alignment Reward (Reward the agent for facing the goal)
+        # Dense Alignment Reward (Reward the agent for facing the goal)
         dx = self.env_map.goal.x - self.robot.x
         dy = self.env_map.goal.y - self.robot.y
         angle_to_goal = np.arctan2(dy, dx)
@@ -229,7 +229,9 @@ class NavigationEngine(gym.Env):
 
         # Lidar Safety Penalty (Proportional Repulsion Field)
         lidar_data = self.get_lidar_data()
-        min_lidar = np.min(lidar_data)
+
+        # Clamp min_lidar to 0.0 to prevent explosive negative values when out of bounds
+        min_lidar = max(0.0, float(np.min(lidar_data)))
 
         if min_lidar < config.lidar_penalty_threshold:
             # Calculate how deep into the danger zone the robot is (0.0 to 1.0)
