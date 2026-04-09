@@ -87,13 +87,13 @@ python train_dqn.py
 ```
 
 ### 📺 Evaluating and Generating Videos
-To evaluate a trained agent, you need the .keras model weights.
-(Note: Pre-trained weights are available in the GitHub Releases tab. Download them and place them in the root directory).
-Once the weights are in the root folder, run:
+To evaluate a trained agent, you need the `.keras` model weights. 
+*(Note: Pre-trained weights are available in the GitHub Releases tab. Download them and place them inside a folder named `models/` in the root directory).*
+Once the weights are in the `models/` folder, run:
 ```bash
 python evaluate.py
 ```
-This will run the agent through several episodes in the hardest difficulty setting and output an .mp4 video of the performance.
+This will run the agent through several episodes in the hardest difficulty setting and output a .gif video of the performance to the docs/videos/ folder.
 
 ## 🗺️ Environment Details
 * **Observation Space (Size: 203):**
