@@ -1,0 +1,105 @@
+\documentclass[10pt, twocolumn, letterpaper]{article}
+
+% --- Packages for a Professional Look ---
+\usepackage[margin=0.75in, columnsep=0.25in]{geometry}
+\usepackage{mathpazo}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{titlesec}
+\usepackage{abstract}
+
+% --- Custom Header Styling ---
+\titleformat{\section}{\large\bfseries\scshape}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+
+% --- Metadata ---
+\title{\vspace{-0.5in}\huge\bfseries Deep Reinforcement Learning for Autonomous Navigation in Highly Dynamic Environments}
+\author{\Large \textbf{Tarek Mourad} \\ \normalsize April 9, 2026}
+\date{}
+
+\begin{document}
+
+\twocolumn[
+  \begin{@twocolumnfalse}
+    \maketitle
+    \begin{abstract}
+    \noindent
+    The capacity for autonomous agents to navigate unpredictable environments remains a pivotal challenge in continuous spatial domains. This paper presents a comprehensive framework evaluating Deep Reinforcement Learning (DRL) algorithms for collision-free trajectory generation in a custom 2D simulation. Utilizing a 200-resolution vectorized Lidar array, the agent must avoid static barriers and complex dynamic hazards—including goal-orbiting entities—to reach a target location. We implement and contrast an off-policy value-based approach, Deep Q-Network (DQN), with an on-policy actor-critic method, Proximal Policy Optimization (PPO). To overcome the sparsity of the 203-dimensional state space, a structured curriculum learning pipeline and a proportional Lidar repulsion reward mechanism were engineered. Experimental outcomes indicate that PPO provides superior policy stability and variance reduction compared to DQN, successfully mitigating catastrophic forgetting when subjected to severe dynamic collision penalties.
+    \vspace{0.2in}
+    \end{abstract}
+  \end{@twocolumnfalse}
+]
+
+\section{Introduction}
+Modern robotic navigation requires an agent to map high-dimensional sensory inputs into immediate, discrete motor commands while optimizing long-term pathfinding objectives. When an environment transitions from static to dynamic—incorporating moving entities with independent trajectories—traditional path planning algorithms often falter.
+
+This project addresses this complexity by modeling the environment as a Markov Decision Process (MDP) and leveraging two fundamentally distinct DRL architectures. The first, the Deep Q-Network (DQN), relies on an experience replay mechanism to approximate the optimal action-value function, $Q^*(s,a)$. The second, Proximal Policy Optimization (PPO), directly optimizes a stochastic policy, $\pi_\theta(a|s)$, employing a clipped surrogate objective and Generalized Advantage Estimation (GAE) to ensure monotonic policy improvements. This paper details the architectural formulation, reward engineering, and comparative performance of these two paradigms.
+
+\section{Simulation Framework}
+To ensure strict control over the MDP mechanics, a bespoke continuous-coordinate 2D simulator was developed using the Gymnasium API and rendered via Pygame.
+
+\subsection{State and Action Representations}
+The environmental state space is highly dimensional, defined as $\mathcal{S} \in \mathbb{R}^{203}$. The state vector integrates:
+\begin{itemize}
+    \item \textbf{Spatial Kinematics (3 features):} The normalized scalar distance to the target, alongside the sine and cosine of the agent's relative heading angle, ensuring cyclical continuity $[-\pi, \pi]$.
+    \item \textbf{Sensory Data (200 features):} A simulated Lidar array casting 200 equidistant rays. Interactions are computed vectorially against bounding boxes and walls, returning normalized distances capped at $20\%$ of the spatial map.
+\end{itemize}
+The action space $\mathcal{A}$ is formulated as four discrete thrust and steering commands: \textit{Turn Right, Turn Left, Move Forward,} and \textit{Sprint} (which doubles linear velocity).
+
+\subsection{Environmental Hazards \& Curriculum}
+The environment features persistent static barriers and dynamic hazards, notably a complex "orbiting creature" that actively circulates the objective. Because the 203-dimensional space presents a formidable initial exploration barrier, training is stratified into a three-stage Curriculum Learning pipeline:
+\begin{enumerate}
+    \item \textbf{Phase I (Proximity Spawning):} Initializations are confined to the immediate vicinity of the goal.
+    \item \textbf{Phase II (Corner Spawning):} The agent initializes in a fixed safe zone while the goal coordinates are randomized.
+    \item \textbf{Phase III (Global Randomization):} Full spatial randomization of all entities, demanding maximum policy generalization.
+\end{enumerate}
+
+\section{Reward Formulation}
+The reward hypothesis dictates that all goals can be described by the maximization of expected cumulative scalar reward. Our objective function seamlessly blends sparse terminal indicators with dense heuristic shaping:
+
+\begin{equation}
+    R_t = \mathcal{H}_{\text{dense}} - 1 + 
+    \begin{cases} 
+      +1000 & \text{Target Acquired} \\
+      -250 & \text{Catastrophic Collision} \\
+      0 & \text{Otherwise}
+   \end{cases}
+\end{equation}
+
+The dense heuristic component, $\mathcal{H}_{\text{dense}}$, is a composite of three localized feedback signals:
+\begin{itemize}
+    \item \textbf{Delta Distance:} A temporal difference scalar scaled by 100, rewarding convergence toward the target.
+    \item \textbf{Heading Alignment:} Evaluated as $0.5 \times \cos(\theta_{\text{diff}})$, incentivizing the agent to orient itself toward the goal.
+	\item \textbf{Proportional Lidar Repulsion:} A critical safety penalty. If sensory rays breach a predefined $20\%$ proximity threshold, an immediate penalty is assessed. This penalty scales precisely to the depth of the hazard's penetration into the safety zone, reaching a maximum magnitude of $-1.0$. This acts as a soft, continuous warning field, contrasting heavily with the discrete $-250$ catastrophic collision penalty.
+\end{itemize}
+
+\section{Experimental Results}
+Both architectures were trained from scratch using TensorFlow, relying on orthogonal weight initialization to prevent gradient degradation across the wide sensory layers. Figures \ref{fig:dqn} and \ref{fig:ppo} illustrate the episodic returns over the training lifecycle.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{docs/imgs/dqn_learning_curve.png}
+    \caption{DQN Training Trajectory. The high variance and periodic performance collapse indicate instability during curriculum phase transitions.}
+    \label{fig:dqn}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{docs/imgs/ppo_learning_curve.png}
+    \caption{PPO Training Trajectory. The tight variance envelope and rapid stabilization reflect the efficacy of the clipped surrogate objective.}
+    \label{fig:ppo}
+\end{figure}
+
+\subsection{Analysis of Algorithmic Stability}
+The empirical data underscores a significant divergence in algorithmic resilience. The off-policy DQN exhibited notable volatility. When encountering the dynamic goal-orbiting hazard, the massive $-250$ collision penalty frequently flooded the replay buffer, causing severe Q-value overestimation and subsequent policy collapse. 
+
+Conversely, PPO exhibited robust convergence. By constraining the policy update magnitude via the clip ratio ($\epsilon = 0.2$), PPO mathematically insulated itself against the variance introduced by unpredictable dynamic collisions. Furthermore, emergent behavioral patterns were observed: the PPO agent strategically reserved the \textit{Sprint} action for obstacle-free vectors, reverting to standard velocities to navigate dense static clusters, thereby minimizing the accumulated base step penalties.
+
+\section{Conclusion}
+This study validates that on-policy actor-critic architectures (PPO) possess a distinct advantage over value-based methods (DQN) when processing high-dimensional continuous sensory data in unpredictable spaces. The integration of curriculum learning successfully bootstrapped the initial spatial understanding, while the proportional Lidar repulsion reward proved essential in bridging the gap between raw sensory inputs and collision-free autonomous navigation.
+
+\end{document}
